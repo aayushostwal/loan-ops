@@ -20,7 +20,7 @@ Complete documentation for the Kaaj Loan Management System.
 | What do you want to do? | Go here |
 |-------------------------|---------|
 | 🚀 Get started quickly | [Setup Guide](SETUP.md) |
-| 💼 Upload loan applications | [Loan App Quick Start](LOAN_APPLICATION_QUICKSTART.md) |
+| 💼 Upload loan applications | [Loan App Flow](LOAN_APPLICATION_FLOW.md) |
 | 📄 Upload lender documents | [API Examples](API_EXAMPLES.md#lender-upload) |
 | 🔌 Use the API | [API Examples](API_EXAMPLES.md) |
 | 🏗️ Understand the system | [Architecture Guide](ARCHITECTURE.md) |
@@ -48,21 +48,7 @@ Complete documentation for the Kaaj Loan Management System.
 
 ## Loan Application Feature
 
-### 1. Quick Start Guide
-**File:** [LOAN_APPLICATION_QUICKSTART.md](LOAN_APPLICATION_QUICKSTART.md)  
-**For:** Users, Developers, Product managers
-
-**Contents:**
-- Feature overview
-- Quick start (5 minutes)
-- Basic usage examples
-- Match score breakdown
-- Testing instructions
-- Troubleshooting
-
-**Start here if:** You want to upload loan applications and get matches.
-
-### 2. Architecture & Flow
+### 1. Architecture & Flow
 **File:** [LOAN_APPLICATION_FLOW.md](LOAN_APPLICATION_FLOW.md)  
 **For:** Developers, Architects, Technical leads
 
@@ -77,36 +63,7 @@ Complete documentation for the Kaaj Loan Management System.
 
 **Start here if:** You need to understand how loan matching works internally.
 
-### 3. API Examples
-**File:** [LOAN_APPLICATION_EXAMPLES.md](LOAN_APPLICATION_EXAMPLES.md)  
-**For:** Developers, Integrators, QA engineers
-
-**Contents:**
-- Upload examples (curl, Python)
-- Status checking
-- Match retrieval
-- Filtering examples
-- Error handling
-- Complete workflow example
-- Best practices
-
-**Start here if:** You're integrating with the loan application API.
-
-### 4. Implementation Details
-**File:** [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)  
-**For:** Developers, Code reviewers, Maintainers
-
-**Contents:**
-- All files created/modified
-- Code statistics
-- Feature list
-- Testing strategy
-- Integration points
-- Future enhancements
-
-**Start here if:** You need a technical overview of the implementation.
-
-### 5. Change Log
+### 2. Change Log
 **File:** [CHANGES.md](CHANGES.md)  
 **For:** Developers, DevOps, Code reviewers
 
@@ -174,7 +131,7 @@ Complete documentation for the Kaaj Loan Management System.
 - `GET /api/loan-applications/{id}/matches` - Get match results
 - `DELETE /api/loan-applications/{id}` - Delete application
 
-**Documentation:** [LOAN_APPLICATION_EXAMPLES.md](LOAN_APPLICATION_EXAMPLES.md)
+**Documentation:** [LOAN_APPLICATION_FLOW.md](LOAN_APPLICATION_FLOW.md)
 
 #### System
 - `GET /health` - Health check
@@ -196,7 +153,6 @@ Complete documentation for the Kaaj Loan Management System.
 - Troubleshooting test failures
 
 **Also see:**
-- [Celery Mocking](../tests/CELERY_MOCKING.md) - Mock setup details
 - Test files in `tests/` directory
 
 ---
@@ -211,7 +167,7 @@ Complete documentation for the Kaaj Loan Management System.
 
 2. **Understanding the Codebase**
    - Read [ARCHITECTURE.md](ARCHITECTURE.md)
-   - Review [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
+   - Review [LOAN_APPLICATION_FLOW.md](LOAN_APPLICATION_FLOW.md)
 
 3. **Working on Features**
    - Check [CHANGES.md](CHANGES.md) for recent updates
@@ -291,7 +247,7 @@ kaaj/
 
 - [📖 Main README](../README.md)
 - [🚀 Setup Guide](SETUP.md)
-- [💼 Loan App Quick Start](LOAN_APPLICATION_QUICKSTART.md)
+- [💼 Loan App Flow](LOAN_APPLICATION_FLOW.md)
 - [🏗️ Architecture](ARCHITECTURE.md)
 - [🔌 API Examples](API_EXAMPLES.md)
 - [🧪 Test Suite](../tests/README.md)

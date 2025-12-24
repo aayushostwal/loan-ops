@@ -6,8 +6,6 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 
 **NEW!** Upload loan applications and automatically match them against all lenders using parallel processing with Hatchet workflows. Get AI-powered match scores and detailed recommendations.
 
-👉 **[Quick Start Guide for Loan Applications](docs/LOAN_APPLICATION_QUICKSTART.md)**
-
 ---
 
 ## 📖 Documentation Index
@@ -19,10 +17,7 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 ### ⭐ Loan Application Feature (NEW)
 | Document | Description | For |
 |----------|-------------|-----|
-| **[Quick Start](docs/LOAN_APPLICATION_QUICKSTART.md)** | Get started in 5 minutes | New users, developers |
 | **[Architecture & Flow](docs/LOAN_APPLICATION_FLOW.md)** | Detailed system design | Developers, architects |
-| **[API Examples](docs/LOAN_APPLICATION_EXAMPLES.md)** | Code examples & usage | Developers, integrators |
-| **[Implementation Details](docs/IMPLEMENTATION_SUMMARY.md)** | Complete implementation overview | Developers, maintainers |
 | **[Change Log](docs/CHANGES.md)** | All files created/modified | DevOps, reviewers |
 
 ### 🚀 Getting Started
@@ -45,10 +40,9 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 ## 🗂️ Quick Navigation
 
 ### 🆕 Getting Started with Loan Applications
-1. Read [Quick Start Guide](docs/LOAN_APPLICATION_QUICKSTART.md)
-2. Run the demo: `python demo_loan_application.py application.pdf`
-3. Check [API Examples](docs/LOAN_APPLICATION_EXAMPLES.md) for integration
-4. See [Architecture Flow](docs/LOAN_APPLICATION_FLOW.md) for details
+1. Run the demo: `python demo_loan_application.py application.pdf`
+2. See [Architecture Flow](docs/LOAN_APPLICATION_FLOW.md) for details
+3. Check [API Examples](docs/API_EXAMPLES.md) for integration
 
 ### 👤 For New Users
 1. [Setup Guide](docs/SETUP.md) - Install and configure
@@ -58,9 +52,8 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 
 ### 👨‍💻 For Developers
 1. [Architecture Guide](docs/ARCHITECTURE.md) - System design
-2. [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Code details
-3. [API Examples](docs/API_EXAMPLES.md) - Integration examples
-4. [Test Suite](tests/README.md) - Run tests
+2. [API Examples](docs/API_EXAMPLES.md) - Integration examples
+3. [Test Suite](tests/README.md) - Run tests
 
 ### 🚀 For DevOps
 1. [Setup Guide](docs/SETUP.md) - Installation & deployment
@@ -75,11 +68,11 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 - ✅ OCR Service (Tesseract)
 - ✅ LLM Service (OpenAI GPT)
 - ✅ **Match Service (AI-powered scoring)** ⭐ NEW
-- ✅ Celery Async Workers
-- ✅ **Hatchet Parallel Workflows** ⭐ NEW
+- ✅ **Hatchet Workflows** ⭐ Unified async processing
 - ✅ FastAPI REST API
 - ✅ PostgreSQL Database
-- ✅ Redis Task Queue
+- ❌ ~~Celery~~ - Removed (now using Hatchet)
+- ❌ ~~Redis~~ - Removed (no longer needed)
 
 ### Features
 
@@ -117,9 +110,9 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 
 | Issue | Documentation |
 |-------|--------------|
-| **Loan Applications** | [Quick Start](docs/LOAN_APPLICATION_QUICKSTART.md) • [Examples](docs/LOAN_APPLICATION_EXAMPLES.md) |
+| **Loan Applications** | [Architecture Flow](docs/LOAN_APPLICATION_FLOW.md) |
 | **Installation Issues** | [Setup Guide - Troubleshooting](docs/SETUP.md#troubleshooting) |
-| **API Questions** | [API Examples](docs/API_EXAMPLES.md) • [Loan App Examples](docs/LOAN_APPLICATION_EXAMPLES.md) |
+| **API Questions** | [API Examples](docs/API_EXAMPLES.md) |
 | **Architecture** | [Architecture Guide](docs/ARCHITECTURE.md) • [Loan App Flow](docs/LOAN_APPLICATION_FLOW.md) |
 | **Testing** | [Test Suite](tests/README.md) |
 
@@ -127,9 +120,9 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 
 ### Internal Documentation
 - **[📑 Complete Docs Index](docs/INDEX.md)** - All documentation in one place
-- **[🚀 Quick Start - Loan Apps](docs/LOAN_APPLICATION_QUICKSTART.md)** - Get started fast
 - **[🏗️ System Architecture](docs/ARCHITECTURE.md)** - Technical design
 - **[🔌 API Examples](docs/API_EXAMPLES.md)** - Integration guide
+- **[💼 Loan App Flow](docs/LOAN_APPLICATION_FLOW.md)** - Loan application architecture
 
 ### External Resources
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)

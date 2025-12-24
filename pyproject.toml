@@ -24,8 +24,6 @@ dependencies = [
     "pdf2image>=1.17.0",
     "pillow>=10.0.0",
     "openai>=1.0.0",
-    "celery>=5.4.0",
-    "redis>=5.0.0",
     "greenlet>=3.2.4",
     "hatchet-sdk>=0.30.0",
 ]

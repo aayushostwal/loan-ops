@@ -13,10 +13,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.pool import NullPool
 
 # Set test environment variables before importing app modules
-# This prevents Celery from trying to connect to Redis during import
-os.environ.setdefault("CELERY_BROKER_URL", "memory://")
-os.environ.setdefault("CELERY_RESULT_BACKEND", "cache+memory://")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+# Hatchet will be mocked, so no token needed
+os.environ.setdefault("HATCHET_CLIENT_TOKEN", "")
 
 from app.main import app
 from app.models import Base
@@ -46,15 +44,15 @@ TestSessionLocal = async_sessionmaker(
 
 
 @pytest.fixture(scope="session", autouse=True)
-def mock_celery_app():
+def mock_hatchet_client():
     """
-    Mock the Celery app at session level to prevent any Redis connection attempts.
+    Mock the Hatchet client at session level to prevent connection attempts.
     
     This fixture is autouse=True, so it runs automatically for all tests.
     """
-    # Mock the celery_app to prevent connection attempts
-    with patch('app.celery_app.celery_app.connection') as mock_conn:
-        mock_conn.return_value = MagicMock()
+    # Return None for get_hatchet_client to run in mock mode
+    with patch('app.workflows.lender_processing_workflow.get_hatchet_client', return_value=None), \
+         patch('app.workflows.loan_matching_workflow.get_hatchet_client', return_value=None):
         yield
 
 
@@ -67,29 +65,22 @@ def event_loop() -> Generator:
 
 
 @pytest.fixture(scope="function")
-def mock_celery():
+def mock_hatchet_workflow():
     """
-    Mock Celery tasks to avoid Redis dependency in tests.
+    Mock Hatchet workflow triggers to avoid Hatchet dependency in tests.
     
-    This fixture mocks the Celery task so that .delay() and .apply_async()
-    return a mock AsyncResult without actually connecting to Redis.
+    This fixture mocks Hatchet workflow triggering.
     """
-    # Create a mock AsyncResult that Celery tasks return
-    mock_async_result = MagicMock()
-    mock_async_result.id = "test-task-id-12345"
-    mock_async_result.state = "PENDING"
-    mock_async_result.ready.return_value = False
-    mock_async_result.successful.return_value = False
-    mock_async_result.failed.return_value = False
+    # Mock workflow run result
+    mock_workflow_run = MagicMock()
+    mock_workflow_run.workflow_run_id = "test-workflow-run-id-12345"
     
-    # Patch the Celery task methods
-    with patch('app.tasks.lender_tasks.process_lender_document.delay', return_value=mock_async_result) as mock_delay, \
-         patch('app.tasks.lender_tasks.process_lender_document.apply_async', return_value=mock_async_result) as mock_apply_async:
-        yield {
-            'delay': mock_delay,
-            'apply_async': mock_apply_async,
-            'async_result': mock_async_result
-        }
+    # Mock Hatchet client
+    mock_client = MagicMock()
+    mock_client.admin.run_workflow.return_value = mock_workflow_run
+    
+    # Return None to simulate mock mode (no Hatchet server)
+    yield None
 
 
 @pytest.fixture(scope="function")
@@ -117,7 +108,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture(scope="function")
-async def client(db_session: AsyncSession, mock_celery) -> AsyncGenerator[AsyncClient, None]:
+async def client(db_session: AsyncSession, mock_hatchet_workflow) -> AsyncGenerator[AsyncClient, None]:
     """
     Create a test client for the FastAPI app.
     
@@ -126,8 +117,7 @@ async def client(db_session: AsyncSession, mock_celery) -> AsyncGenerator[AsyncC
     - Mocks the OCR service to avoid dependency on Tesseract
     - Mocks the LLM service to avoid OpenAI API calls
     - Mocks the Match service to avoid OpenAI API calls
-    - Mocks the TaskAsyncSession to use the test session (prevents concurrency issues)
-    - Mocks Celery tasks to avoid Redis dependency
+    - Mocks the WorkflowAsyncSession to use the test session (prevents concurrency issues)
     - Mocks Hatchet client to avoid Hatchet server dependency
     """
     async def override_get_db():
@@ -144,14 +134,8 @@ async def client(db_session: AsyncSession, mock_celery) -> AsyncGenerator[AsyncC
             # Don't close the session, let the fixture handle it
             pass
     
-    # Mock the task session maker to use the test session
-    mock_task_session = lambda: MockAsyncSessionContext()
-    
-    # Mock Hatchet client
-    mock_hatchet_client = MagicMock()
-    mock_workflow_run = MagicMock()
-    mock_workflow_run.workflow_run_id = "test-workflow-run-id-12345"
-    mock_hatchet_client.admin.run_workflow.return_value = mock_workflow_run
+    # Mock the workflow session maker to use the test session
+    mock_workflow_session = lambda: MockAsyncSessionContext()
     
     # Mock the OCR service to return sample text
     with patch('app.services.ocr_service.OCRService.extract_text_from_pdf') as mock_ocr, \
@@ -159,8 +143,8 @@ async def client(db_session: AsyncSession, mock_celery) -> AsyncGenerator[AsyncC
          patch('app.services.llm_service.LLMService.process_loan_application', new_callable=AsyncMock) as mock_llm_loan_app, \
          patch('app.services.llm_service.LLMService.validate_and_enrich_data', new_callable=AsyncMock) as mock_llm_validate, \
          patch('app.services.match_service.MatchService.calculate_match_score', new_callable=AsyncMock) as mock_match_score, \
-         patch('app.workflows.loan_matching_workflow.get_hatchet_client', return_value=None) as mock_hatchet, \
-         patch('app.tasks.lender_tasks.TaskAsyncSession', mock_task_session):
+         patch('app.workflows.lender_processing_workflow.WorkflowAsyncSession', mock_workflow_session), \
+         patch('app.workflows.loan_matching_workflow.WorkflowAsyncSession', mock_workflow_session):
         
         # Configure OCR mock to return sample extracted text
         mock_ocr.return_value = """

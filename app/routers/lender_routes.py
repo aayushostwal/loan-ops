@@ -13,8 +13,15 @@ from datetime import datetime
 
 from app.models.lender import Lender, LenderStatus
 from app.services.ocr_service import OCRService
-from app.tasks.lender_tasks import process_lender_document
 from app.db import engine
+
+# Import Hatchet client getter
+try:
+    from app.workflows.lender_processing_workflow import get_hatchet_client
+except ImportError:
+    # Fallback if Hatchet is not installed
+    def get_hatchet_client():
+        return None
 
 # Configure logging
 logging.basicConfig(
@@ -173,19 +180,42 @@ async def upload_pdf_document(
         
         logger.info(f"Created Lender record with ID: {lender.id}")
         
-        # Trigger async processing task
-        logger.info(f"Triggering async processing task for Lender ID: {lender.id}")
-        task = process_lender_document.delay(lender.id)
+        # Trigger Hatchet workflow for processing
+        workflow_run_id = None
+        try:
+            hatchet_client = get_hatchet_client()
+            
+            if hatchet_client:
+                logger.info(f"Triggering Hatchet workflow for Lender ID: {lender.id}")
+                
+                # Trigger workflow
+                workflow_run = hatchet_client.admin.run_workflow(
+                    "lender-processing",
+                    {
+                        "lender_id": lender.id,
+                        "lender_name": lender_name
+                    }
+                )
+                
+                workflow_run_id = workflow_run.workflow_run_id
+                
+                logger.info(f"Hatchet workflow triggered. Run ID: {workflow_run_id}")
+            else:
+                logger.warning("Hatchet client not available. Skipping workflow trigger.")
+                
+        except Exception as workflow_error:
+            logger.error(f"Failed to trigger Hatchet workflow: {str(workflow_error)}")
+            # Don't fail the request if workflow trigger fails
         
         logger.info(
-            f"Upload successful. Lender ID: {lender.id}, Task ID: {task.id}"
+            f"Upload successful. Lender ID: {lender.id}, Workflow Run ID: {workflow_run_id}"
         )
         
         return UploadResponse(
             message="PDF uploaded successfully. Processing started.",
             lender_id=lender.id,
             status=lender.status.value,
-            task_id=task.id
+            task_id=workflow_run_id  # Now contains workflow_run_id instead of Celery task_id
         )
         
     except HTTPException:
