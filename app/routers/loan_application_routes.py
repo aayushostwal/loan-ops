@@ -15,7 +15,10 @@ from datetime import datetime
 from app.models.loan_application import LoanApplication, LoanMatch, ApplicationStatus, MatchStatus
 from app.services.ocr_service import OCRService
 from app.services.llm_service import LLMService
-from app.workflows.loan_matching_workflow import get_hatchet_client, LoanMatchingWorkflow
+try:
+    from app.workflows.hatchet_config import hatchet_client as hatchet_client_instance
+except ImportError:
+    hatchet_client_instance = None
 from app.db import engine
 
 # Configure logging
@@ -222,13 +225,11 @@ async def upload_loan_application(
         # Trigger Hatchet workflow for parallel matching
         workflow_run_id = None
         try:
-            hatchet_client = get_hatchet_client()
-            
-            if hatchet_client:
+            if hatchet_client_instance:
                 logger.info(f"Triggering Hatchet workflow for Application ID: {loan_application.id}")
                 
                 # Trigger workflow
-                workflow_run = hatchet_client.admin.run_workflow(
+                workflow_run = hatchet_client_instance.admin.run_workflow(
                     "loan-matching",
                     {
                         "application_id": loan_application.id,
@@ -237,15 +238,11 @@ async def upload_loan_application(
                 )
                 
                 workflow_run_id = workflow_run.workflow_run_id
-                
-                # Update application with workflow run ID
                 loan_application.workflow_run_id = workflow_run_id
                 await db.commit()
-                
                 logger.info(f"Hatchet workflow triggered. Run ID: {workflow_run_id}")
             else:
                 logger.warning("Hatchet client not available. Skipping workflow trigger.")
-                
         except Exception as workflow_error:
             logger.error(f"Failed to trigger Hatchet workflow: {str(workflow_error)}")
             # Don't fail the request if workflow trigger fails

@@ -7,7 +7,7 @@ name = "kaaj"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "alembic>=1.16.5",
     "asyncpg>=0.31.0",
@@ -21,7 +21,7 @@ dependencies = [
     "uvicorn[standard]>=0.39.0",
     "python-multipart>=0.0.9",
     "pytesseract>=0.3.10",
-    "pdf2image>=1.17.0",
+    "pymupdf>=1.24.0",
     "pillow>=10.0.0",
     "openai>=1.0.0",
     "greenlet>=3.2.4",
@@ -39,4 +39,4 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["app", "app.models", "app.routers", "app.services", "app.tasks"]
+packages = ["app", "app.models", "app.routers", "app.services", "app.workflows"]

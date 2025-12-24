@@ -63,60 +63,16 @@ echo "   OpenAI: ${OPENAI_API_KEY:+Configured}${OPENAI_API_KEY:-Not configured}"
 echo "   Database: ${DATABASE_URL}"
 echo ""
 
-echo "🚀 Starting Hatchet worker..."
+echo "🚀 Starting single Hatchet worker..."
 echo "   This worker handles both:"
 echo "   - Lender document processing"
 echo "   - Loan application matching"
 echo ""
+echo "💡 For multiple workers, use: ./start_workers.sh [num_workers]"
+echo ""
 
 # Start the unified Hatchet worker
-python -c "
-import asyncio
-import logging
-from app.workflows.lender_processing_workflow import LenderProcessingWorkflow, get_hatchet_client as get_lender_client
-from app.workflows.loan_matching_workflow import LoanMatchingWorkflow, get_hatchet_client as get_loan_client
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-def main():
-    logger.info('Initializing Hatchet worker...')
-    
-    # Get Hatchet client
-    hatchet = get_lender_client()  # Both use same client
-    
-    if not hatchet:
-        logger.error('Failed to initialize Hatchet client')
-        logger.error('Please set HATCHET_CLIENT_TOKEN in .env')
-        return
-    
-    # Create workflow instances and register
-    lender_workflow = LenderProcessingWorkflow(hatchet)
-    lender_workflow.register_workflow()
-    logger.info('✅ Lender processing workflow registered')
-    
-    loan_workflow = LoanMatchingWorkflow(hatchet)
-    loan_workflow.register_workflow()
-    logger.info('✅ Loan matching workflow registered')
-    
-    logger.info('Worker is ready to process workflows')
-    logger.info('Press Ctrl+C to stop')
-    
-    # Start worker (this blocks)
-    hatchet.start()
-
-if __name__ == '__main__':
-    try:
-        main()
-    except KeyboardInterrupt:
-        logger.info('Worker stopped by user')
-    except Exception as e:
-        logger.error(f'Worker failed: {str(e)}', exc_info=True)
-        exit(1)
-"
+python app/workflows/worker.py
 
 echo ""
 echo "✅ Hatchet worker stopped"

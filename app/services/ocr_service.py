@@ -7,9 +7,10 @@ import logging
 import tempfile
 from pathlib import Path
 from typing import Optional
-from pdf2image import convert_from_bytes
+import fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
+import io
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class OCRService:
     """
     Service class for OCR operations on PDF documents.
     
-    This service uses pdf2image to convert PDF pages to images,
+    This service uses PyMuPDF to convert PDF pages to images,
     and pytesseract for OCR text extraction.
     """
     
@@ -65,25 +66,34 @@ class OCRService:
                 logger.error("Empty PDF bytes provided")
                 raise ValueError("PDF content is empty")
             
-            # Convert PDF bytes to images
-            logger.debug("Converting PDF to images...")
-            images = convert_from_bytes(
-                pdf_bytes,
-                dpi=dpi,
-                fmt='PNG'
-            )
+            # Open PDF from bytes using PyMuPDF
+            logger.debug("Opening PDF with PyMuPDF...")
+            pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
             
-            if not images:
-                logger.error("No images generated from PDF")
-                raise ValueError("Could not convert PDF to images")
+            if pdf_document.page_count == 0:
+                logger.error("PDF has no pages")
+                raise ValueError("PDF document is empty")
             
-            logger.info(f"Successfully converted PDF to {len(images)} image(s)")
+            logger.info(f"Successfully opened PDF with {pdf_document.page_count} page(s)")
             
             # Extract text from each page
             extracted_texts = []
             
-            for page_num, image in enumerate(images, start=1):
-                logger.debug(f"Processing page {page_num}/{len(images)}")
+            # Calculate zoom factor for DPI
+            # PyMuPDF uses a matrix for scaling. Default is 72 DPI.
+            zoom = dpi / 72.0
+            mat = fitz.Matrix(zoom, zoom)
+            
+            for page_num in range(pdf_document.page_count):
+                page = pdf_document[page_num]
+                logger.debug(f"Processing page {page_num + 1}/{pdf_document.page_count}")
+                
+                # Convert page to image (pixmap)
+                pix = page.get_pixmap(matrix=mat)
+                
+                # Convert pixmap to PIL Image
+                img_data = pix.tobytes("png")
+                image = Image.open(io.BytesIO(img_data))
                 
                 # Perform OCR on the image
                 text = pytesseract.image_to_string(
@@ -93,10 +103,13 @@ class OCRService:
                 )
                 
                 if text.strip():
-                    extracted_texts.append(f"--- Page {page_num} ---\n{text}")
-                    logger.debug(f"Page {page_num}: Extracted {len(text)} characters")
+                    extracted_texts.append(f"--- Page {page_num + 1} ---\n{text}")
+                    logger.debug(f"Page {page_num + 1}: Extracted {len(text)} characters")
                 else:
-                    logger.warning(f"Page {page_num}: No text extracted")
+                    logger.warning(f"Page {page_num + 1}: No text extracted")
+            
+            # Close the PDF document
+            pdf_document.close()
             
             # Combine all pages
             full_text = "\n\n".join(extracted_texts)
@@ -166,4 +179,3 @@ class OCRService:
         except Exception as e:
             logger.error(f"Tesseract not found: {str(e)}")
             return False
-

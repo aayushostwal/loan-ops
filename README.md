@@ -2,9 +2,11 @@
 
 Welcome to Kaaj! A comprehensive loan management system with intelligent lender document processing and automated loan application matching using parallel workflows.
 
-## 🎯 What's New: Loan Application Feature
+## 🎯 What's New: Modern Frontend UI
 
-**NEW!** Upload loan applications and automatically match them against all lenders using parallel processing with Hatchet workflows. Get AI-powered match scores and detailed recommendations.
+**NEW!** Beautiful, responsive React + TypeScript frontend for managing lenders and loan applications. Upload documents with drag & drop, view processing status in real-time, and analyze match results with an intuitive interface.
+
+**ALSO NEW!** Upload loan applications and automatically match them against all lenders using parallel processing with Hatchet workflows. Get AI-powered match scores and detailed recommendations.
 
 ---
 
@@ -14,9 +16,10 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 
 ---
 
-### ⭐ Loan Application Feature (NEW)
+### ⭐ New Features
 | Document | Description | For |
 |----------|-------------|-----|
+| **[Frontend Documentation](docs/FRONTEND.md)** | React + TypeScript UI guide | Frontend developers |
 | **[Architecture & Flow](docs/LOAN_APPLICATION_FLOW.md)** | Detailed system design | Developers, architects |
 | **[Change Log](docs/CHANGES.md)** | All files created/modified | DevOps, reviewers |
 
@@ -38,6 +41,12 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 | **[Celery Mocking](tests/CELERY_MOCKING.md)** | Mock setup for tests | Developers |
 
 ## 🗂️ Quick Navigation
+
+### 🆕 Getting Started with the Frontend
+1. Start backend: `./start_api.sh`
+2. Start frontend: `./start_frontend.sh`
+3. Open browser: `http://localhost:5173`
+4. See [Frontend Docs](docs/FRONTEND.md) for details
 
 ### 🆕 Getting Started with Loan Applications
 1. Run the demo: `python demo_loan_application.py application.pdf`
@@ -63,6 +72,7 @@ Welcome to Kaaj! A comprehensive loan management system with intelligent lender 
 ## 🔍 What's Covered
 
 ### System Components
+- ✅ **React + TypeScript Frontend** ⭐ NEW
 - ✅ Lender Model & Database Schema
 - ✅ **Loan Application Model & Match Model** ⭐ NEW
 - ✅ OCR Service (Tesseract)

@@ -14,14 +14,14 @@ from datetime import datetime
 from app.models.lender import Lender, LenderStatus
 from app.services.ocr_service import OCRService
 from app.db import engine
-
+from app.workflows.lender_processing_workflow import LenderProcessingInput
 # Import Hatchet client getter
 try:
-    from app.workflows.lender_processing_workflow import get_hatchet_client
+    from app.workflows.hatchet_config import hatchet_client as get_hatchet_client
 except ImportError:
     # Fallback if Hatchet is not installed
-    def get_hatchet_client():
-        return None
+    get_hatchet_client = None
+
 
 # Configure logging
 logging.basicConfig(
@@ -183,23 +183,16 @@ async def upload_pdf_document(
         # Trigger Hatchet workflow for processing
         workflow_run_id = None
         try:
-            hatchet_client = get_hatchet_client()
-            
-            if hatchet_client:
+            if get_hatchet_client:
                 logger.info(f"Triggering Hatchet workflow for Lender ID: {lender.id}")
+
+                from app.workflows.lender_processing_workflow import lender_processing_workflow
                 
-                # Trigger workflow
-                workflow_run = hatchet_client.admin.run_workflow(
-                    "lender-processing",
-                    {
-                        "lender_id": lender.id,
-                        "lender_name": lender_name
-                    }
-                )
+                lender_processing_workflow.run_no_wait(LenderProcessingInput(lender_id=lender.id))
                 
-                workflow_run_id = workflow_run.workflow_run_id
+                # workflow_run_id = workflow_run.workflow_run_id
                 
-                logger.info(f"Hatchet workflow triggered. Run ID: {workflow_run_id}")
+                logger.info(f"Hatchet workflow triggered. Run ID    ")
             else:
                 logger.warning("Hatchet client not available. Skipping workflow trigger.")
                 

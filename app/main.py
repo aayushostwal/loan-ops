@@ -1,6 +1,7 @@
 # app/main.py
 import logging
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.routers import lender_routes, loan_application_routes
 
 # Configure logging
@@ -15,6 +16,15 @@ app = FastAPI(
     title="Kaaj - Loan Management System",
     description="API for managing lender documents and loan applications with OCR, LLM processing, and parallel matching",
     version="2.0.0"
+)
+
+# Configure CORS for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Frontend URLs
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
