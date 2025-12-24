@@ -1,0 +1,4 @@
+[run]
+omit =
+    app/services/llm_service.py
+    app/services/match_service.py
