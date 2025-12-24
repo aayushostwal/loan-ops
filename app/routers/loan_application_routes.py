@@ -20,7 +20,7 @@ try:
 except ImportError:
     hatchet_client_instance = None
 from app.db import engine
-
+from app.workflows.loan_matching_workflow import ProcessApplicationDataInput
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -179,21 +179,7 @@ async def upload_loan_application(
         
         logger.info(f"OCR extraction successful. Extracted {len(raw_text)} characters")
         
-        # Process raw text using LLM to extract structured application data
-        logger.info("Processing application data using LLM...")
-        try:
-            processed_data = await llm_service.process_loan_application(
-                raw_text=raw_text,
-                applicant_name=applicant_name
-            )
-        except Exception as llm_error:
-            logger.error(f"LLM processing failed: {str(llm_error)}")
-            # Continue with raw data even if LLM fails
-            processed_data = {
-                "error": "LLM processing failed",
-                "raw_text_length": len(raw_text)
-            }
-        
+        # LLM processing will be handled by the workflow
         # Parse application details if provided
         application_dict = None
         if application_details:
@@ -203,14 +189,14 @@ async def upload_loan_application(
             except json.JSONDecodeError:
                 logger.warning("Invalid JSON in application_details, ignoring")
         
-        # Create LoanApplication record
+        # Create LoanApplication record (processed_data will be set by workflow)
         loan_application = LoanApplication(
             applicant_name=applicant_name,
             applicant_email=applicant_email,
             applicant_phone=applicant_phone,
             application_details=application_dict,
             raw_data=raw_text,
-            processed_data=processed_data,
+            processed_data=None,  # Will be processed by workflow
             status=ApplicationStatus.UPLOADED,
             created_by=created_by,
             original_filename=file.filename
@@ -228,37 +214,18 @@ async def upload_loan_application(
             if hatchet_client_instance:
                 logger.info(f"Triggering Hatchet workflow for Application ID: {loan_application.id}")
                 
-                # Trigger workflow
-                workflow_run = hatchet_client_instance.admin.run_workflow(
-                    "loan-matching",
-                    {
-                        "application_id": loan_application.id,
-                        "applicant_name": applicant_name
-                    }
-                )
-                
-                workflow_run_id = workflow_run.workflow_run_id
-                loan_application.workflow_run_id = workflow_run_id
-                await db.commit()
-                logger.info(f"Hatchet workflow triggered. Run ID: {workflow_run_id}")
+                from app.workflows.loan_matching_workflow import loan_matching_workflow
+                loan_matching_workflow.run_no_wait(ProcessApplicationDataInput(application_id=loan_application.id, raw_text=raw_text, applicant_name=applicant_name))
             else:
                 logger.warning("Hatchet client not available. Skipping workflow trigger.")
         except Exception as workflow_error:
             logger.error(f"Failed to trigger Hatchet workflow: {str(workflow_error)}")
             # Don't fail the request if workflow trigger fails
             # The application is still created and can be processed manually
+            # The application is still created and can be processed manually
         
-        logger.info(
-            f"Upload successful. Application ID: {loan_application.id}, "
-            f"Workflow Run ID: {workflow_run_id}"
-        )
         
-        return UploadApplicationResponse(
-            message="Loan application uploaded successfully. Matching process started.",
-            application_id=loan_application.id,
-            status=loan_application.status.value,
-            workflow_run_id=workflow_run_id
-        )
+        return UploadApplicationResponse(message="Loan application uploaded successfully. Matching process started.", application_id=loan_application.id, status=loan_application.status.value)
         
     except HTTPException:
         raise

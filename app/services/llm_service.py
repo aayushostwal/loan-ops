@@ -351,7 +351,7 @@ Example output format:
             # Build prompt
             prompt = self._build_loan_application_prompt(raw_text, applicant_name)
             
-            logger.debug(f"Sending request to OpenAI (model: {self.model})")
+            logger.info(f"Sending request to OpenAI (model: {self.model})")
             
             # Call OpenAI API
             response = await self.client.chat.completions.create(
@@ -373,7 +373,7 @@ Example output format:
             # Extract response
             content = response.choices[0].message.content
             
-            logger.debug(f"Received response from OpenAI: {len(content)} characters")
+            logger.info(f"Received response from OpenAI: {len(content)} characters")
             
             # Parse JSON response
             try:
