@@ -390,7 +390,7 @@ export const LoanApplications: React.FC = () => {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium text-gray-900">
-                                Lender ID: {match.lender_id}
+                                ID: {match.lender_id} | Name: {match.lender_name}
                               </span>
                               <StatusBadge status={match.status} />
                             </div>

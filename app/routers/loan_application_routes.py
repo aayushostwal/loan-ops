@@ -15,6 +15,7 @@ from datetime import datetime
 from app.models.loan_application import LoanApplication, LoanMatch, ApplicationStatus, MatchStatus
 from app.services.ocr_service import OCRService
 from app.services.llm_service import LLMService
+from app.models.lender import Lender
 try:
     from app.workflows.hatchet_config import hatchet_client as hatchet_client_instance
 except ImportError:
@@ -299,6 +300,7 @@ async def get_loan_application(
                 {
                     "id": match.id,
                     "lender_id": match.lender_id,
+                    "lender_name": (await db.execute(select(Lender).where(Lender.id == match.lender_id))).scalar_one_or_none().lender_name,
                     "match_score": match.match_score,
                     "match_analysis": match.match_analysis,
                     "status": match.status.value,
