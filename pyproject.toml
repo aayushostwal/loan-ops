@@ -26,6 +26,7 @@ dependencies = [
     "openai>=1.0.0",
     "greenlet>=3.2.4",
     "hatchet-sdk>=0.30.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [dependency-groups]

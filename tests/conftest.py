@@ -5,12 +5,13 @@ This module provides pytest fixtures for testing the Kaaj API.
 """
 import asyncio
 import os
+import tempfile
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 
 # Set test environment variables before importing app modules
 # Hatchet will be mocked, so no token needed
@@ -19,28 +20,6 @@ os.environ.setdefault("HATCHET_CLIENT_TOKEN", "")
 from app.main import app
 from app.models import Base
 from app.routers.lender_routes import get_db
-
-# Test database URL - use a separate database for testing
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://test_user:test_pass@localhost:5432/test_kaaj"
-)
-
-# Create test engine
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    echo=False,
-    poolclass=NullPool,  # Disable connection pooling for tests
-)
-
-# Create test session maker
-TestSessionLocal = async_sessionmaker(
-    test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -51,8 +30,8 @@ def mock_hatchet_client():
     This fixture is autouse=True, so it runs automatically for all tests.
     """
     # Return None for get_hatchet_client to run in mock mode
-    with patch('app.workflows.lender_processing_workflow.get_hatchet_client', return_value=None), \
-         patch('app.workflows.loan_matching_workflow.get_hatchet_client', return_value=None):
+    with patch('app.workflows.lender_processing_workflow.hatchet_client', return_value=None), \
+         patch('app.workflows.loan_matching_workflow.hatchet_client', return_value=None):
         yield
 
 
@@ -86,25 +65,76 @@ def mock_hatchet_workflow():
 @pytest.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Create a fresh database session for each test.
+    Create a fresh database session for each test using a temporary SQLite file.
     
     This fixture:
+    - Creates a temporary SQLite database file for each test
+    - Updates DATABASE_URL environment variables to point to the temp file
     - Creates all tables before the test
     - Provides a clean database session
-    - Rolls back all changes and drops tables after the test
+    - Deletes the database file after the test
     """
-    # Create tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Create a temporary file for the SQLite database
+    db_fd, db_path = tempfile.mkstemp(suffix='.db', prefix='test_kaaj_')
+    os.close(db_fd)  # Close the file descriptor, SQLAlchemy will handle the file
     
-    # Create session
-    async with TestSessionLocal() as session:
-        yield session
-        await session.rollback()
+    # Store original environment variables
+    original_database_url = os.environ.get("DATABASE_URL")
+    original_sync_database_url = os.environ.get("SYNC_DATABASE_URL")
     
-    # Drop tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    try:
+        # Update environment variables to use the temp SQLite file
+        os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path}"
+        os.environ["SYNC_DATABASE_URL"] = f"sqlite+pysqlite:///{db_path}"
+        
+        # Create test engine for this specific database file
+        test_engine = create_async_engine(
+            f"sqlite+aiosqlite:///{db_path}",
+            echo=False,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,  # Use StaticPool for SQLite in-memory/file databases
+        )
+        
+        # Create test session maker
+        TestSessionLocal = async_sessionmaker(
+            test_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+        
+        # Create tables
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        
+        # Create and yield session
+        async with TestSessionLocal() as session:
+            try:
+                yield session
+            finally:
+                # Ensure session is closed
+                await session.rollback()
+                await session.close()
+        
+        # Dispose of all connections
+        await test_engine.dispose()
+        
+    finally:
+        # Restore original environment variables
+        if original_database_url is not None:
+            os.environ["DATABASE_URL"] = original_database_url
+        elif "DATABASE_URL" in os.environ:
+            del os.environ["DATABASE_URL"]
+            
+        if original_sync_database_url is not None:
+            os.environ["SYNC_DATABASE_URL"] = original_sync_database_url
+        elif "SYNC_DATABASE_URL" in os.environ:
+            del os.environ["SYNC_DATABASE_URL"]
+        
+        # Delete the temporary database file
+        if os.path.exists(db_path):
+            os.unlink(db_path)
 
 
 @pytest.fixture(scope="function")
@@ -114,6 +144,7 @@ async def client(db_session: AsyncSession, mock_hatchet_workflow) -> AsyncGenera
     
     This fixture:
     - Overrides the database dependency to use the test database session
+    - Patches database engines to use the test SQLite database
     - Mocks the OCR service to avoid dependency on Tesseract
     - Mocks the LLM service to avoid OpenAI API calls
     - Mocks the Match service to avoid OpenAI API calls
@@ -137,14 +168,22 @@ async def client(db_session: AsyncSession, mock_hatchet_workflow) -> AsyncGenera
     # Mock the workflow session maker to use the test session
     mock_workflow_session = lambda: MockAsyncSessionContext()
     
-    # Mock the OCR service to return sample text
+    # Get the test database engine from db_session's bind
+    test_engine = db_session.bind
+    
+    # Mock the OCR service to return sample text and patch database engines
     with patch('app.services.ocr_service.OCRService.extract_text_from_pdf') as mock_ocr, \
          patch('app.services.llm_service.LLMService.process_raw_text', new_callable=AsyncMock) as mock_llm_process, \
          patch('app.services.llm_service.LLMService.process_loan_application', new_callable=AsyncMock) as mock_llm_loan_app, \
          patch('app.services.llm_service.LLMService.validate_and_enrich_data', new_callable=AsyncMock) as mock_llm_validate, \
          patch('app.services.match_service.MatchService.calculate_match_score', new_callable=AsyncMock) as mock_match_score, \
          patch('app.workflows.lender_processing_workflow.WorkflowAsyncSession', mock_workflow_session), \
-         patch('app.workflows.loan_matching_workflow.WorkflowAsyncSession', mock_workflow_session):
+         patch('app.workflows.loan_matching_workflow.WorkflowAsyncSession', mock_workflow_session), \
+         patch('app.db.engine', test_engine), \
+         patch('app.db.workflow_engine', test_engine), \
+         patch('app.db.task_engine', test_engine), \
+         patch('app.routers.lender_routes.engine', test_engine), \
+         patch('app.routers.loan_application_routes.engine', test_engine):
         
         # Configure OCR mock to return sample extracted text
         mock_ocr.return_value = """
@@ -434,4 +473,3 @@ def expected_llm_response() -> dict:
             "processing_successful": True
         }
     }
-

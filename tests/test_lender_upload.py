@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lender import Lender, LenderStatus
-from app.tasks.lender_tasks import _process_lender_document_async
+from app.workflows.lender_processing_workflow import _process_lender_document
 
 
 class TestLenderUpload:
@@ -178,7 +178,7 @@ class TestLenderUpload:
         lender_id = response.json()["lender_id"]
         
         # Manually call the processing function (bypassing Celery)
-        result = await _process_lender_document_async(lender_id)
+        result = await _process_lender_document(lender_id)
         
         # Refresh session to get updated data
         db_session.expire_all()
@@ -421,7 +421,7 @@ class TestProcessingWorkflow:
         lender_id = response.json()["lender_id"]
         
         # Process the document
-        processing_result = await _process_lender_document_async(lender_id)
+        processing_result = await _process_lender_document(lender_id)
         
         # Refresh session
         db_session.expire_all()
@@ -516,7 +516,7 @@ class TestProcessingWorkflow:
         assert lender_before.processed_data is None
         
         # Step 3: Process (manually, without Celery)
-        processing_result = await _process_lender_document_async(lender_id)
+        processing_result = await _process_lender_document(lender_id)
         
         # Refresh the session
         db_session.expire_all()
@@ -614,7 +614,7 @@ class TestProcessingWorkflow:
         # Process each one
         processing_results = []
         for lender_id in lender_ids:
-            result = await _process_lender_document_async(lender_id)
+            result = await _process_lender_document(lender_id)
             processing_results.append(result)
         
         # Refresh session
@@ -718,4 +718,3 @@ class TestDataValidation:
         assert lender.created_at is not None
         assert lender.updated_at is not None
         assert lender.created_at <= lender.updated_at
-

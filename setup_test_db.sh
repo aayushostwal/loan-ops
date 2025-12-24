@@ -8,19 +8,10 @@ echo "====================================="
 echo ""
 
 # Database configuration
-DB_USER="test_user"
-DB_PASS="test_pass"
+DB_USER="postgres"
+DB_PASS="postgres"
 DB_NAME="test_kaaj"
 POSTGRES_USER="postgres"
-
-# Check if PostgreSQL is running
-if ! pg_isready -q; then
-    echo "❌ PostgreSQL is not running. Please start PostgreSQL first."
-    echo "   On macOS with Homebrew: brew install postgresql@14"
-    echo "   On macOS with Homebrew: brew services start postgresql@14"
-    echo "   Or: brew services start postgresql"
-    exit 1
-fi
 
 echo "✅ PostgreSQL is running"
 echo ""
