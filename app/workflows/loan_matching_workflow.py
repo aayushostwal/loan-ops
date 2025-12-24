@@ -136,6 +136,15 @@ if loan_matching_workflow:
             logger.warning("No raw_text provided, skipping LLM processing")
             return {"application_id": application_id, "processed_data": None, "error": "No raw text provided"}
 
+        async with WorkflowAsyncSession() as db:
+            await db.execute(
+                update(LoanApplication)
+                .where(LoanApplication.id == application_id)
+                .values(status=ApplicationStatus.PROCESSING)
+            )
+            await db.commit()
+            logger.info(f"Updated application {application_id} with status {ApplicationStatus.PROCESSING}")
+
         # Process raw text using LLM
         try:
             logger.info(f"Processing application {application_id} with LLM...")
