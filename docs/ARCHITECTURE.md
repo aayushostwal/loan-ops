@@ -6,41 +6,41 @@ Low-Level Design (LLD) documentation for the Kaaj Loan Management System.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              KAAJ SYSTEM                                     │
+│                              KAAJ SYSTEM                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────┐        ┌─────────────────────────────────────────────┐    │
-│  │   React     │◄──────▶│              FastAPI Server                 │    │
-│  │  Frontend   │  REST  │                                             │    │
-│  │  :5173      │        │  ┌─────────────┐  ┌─────────────┐          │    │
-│  └─────────────┘        │  │   Lender    │  │    Loan     │          │    │
-│                         │  │   Routes    │  │   Routes    │          │    │
-│                         │  └──────┬──────┘  └──────┬──────┘          │    │
-│                         │         │                │                  │    │
-│                         │         ▼                ▼                  │    │
-│                         │  ┌─────────────────────────────────┐       │    │
-│                         │  │           Services              │       │    │
-│                         │  │  ┌─────┐  ┌─────┐  ┌─────────┐ │       │    │
-│                         │  │  │ OCR │  │ LLM │  │  Match  │ │       │    │
-│                         │  └──┴─────┴──┴─────┴──┴─────────┴─┘       │    │
-│                         └──────────────────┬────────────────────────┘    │
-│                                            │                              │
-│  ┌─────────────────────────────────────────┼─────────────────────────┐   │
-│  │                    Hatchet Workflow     │                          │   │
-│  │  ┌─────────────────────┐    ┌──────────▼──────────┐               │   │
-│  │  │ Lender Processing   │    │  Loan Matching      │               │   │
-│  │  │     Workflow        │    │    Workflow         │               │   │
-│  │  └─────────────────────┘    └─────────────────────┘               │   │
-│  └───────────────────────────────────────────────────────────────────┘   │
-│                                            │                              │
-│                         ┌──────────────────▼──────────────────┐          │
-│                         │          PostgreSQL                 │          │
-│                         │   ┌─────────┐  ┌────────────────┐  │          │
-│                         │   │ lenders │  │loan_applications│  │          │
-│                         │   └─────────┘  ├────────────────┤  │          │
-│                         │                │  loan_matches  │  │          │
-│                         │                └────────────────┘  │          │
-│                         └────────────────────────────────────┘          │
+│  ┌─────────────┐        ┌─────────────────────────────────────────────┐     │
+│  │   React     │◄──────▶│              FastAPI Server                 │     │
+│  │  Frontend   │  REST  │                                             │     │
+│  │  :5173      │        │  ┌─────────────┐  ┌─────────────┐           │     │
+│  └─────────────┘        │  │   Lender    │  │    Loan     │           │     │
+│                         │  │   Routes    │  │   Routes    │           │     │
+│                         │  └──────┬──────┘  └──────┬──────┘           │     │
+│                         │         │                │                  │     │
+│                         │         ▼                ▼                  │     │
+│                         │  ┌─────────────────────────────────┐        │     │
+│                         │  │           Services              │        │     │
+│                         │  │  ┌─────┐  ┌─────┐  ┌─────────┐  │        │     │
+│                         │  │  │ OCR │  │ LLM │  │  Match  │  │        │     │
+│                         │  └──┴─────┴──┴─────┴──┴─────────┴──┘        │     │
+│                         └──────────────────┬──────────────────────────┘     │
+│                                            │                                │
+│  ┌─────────────────────────────────────────┼─────────────────────────┐      │
+│  │                    Hatchet Workflow     │                         │      │
+│  │  ┌─────────────────────┐    ┌──────────▼──────────┐               │      │
+│  │  │ Lender Processing   │    │  Loan Matching      │               │      │
+│  │  │     Workflow        │    │    Workflow         │               │      │
+│  │  └─────────────────────┘    └─────────────────────┘               │      │
+│  └───────────────────────────────────────────────────────────────────┘      │
+│                                            │                                │
+│                         ┌──────────────────▼──────────────────┐             │
+│                         │          PostgreSQL                 │             │
+│                         │   ┌─────────┐  ┌─────────────────┐  │             │
+│                         │   │ lenders │  │loan_applications│  │             │
+│                         │   └─────────┘  ├─────────────────┤  │             │
+│                         │                │  loan_matches   │  │             │
+│                         │                └─────────────────┘  │             │
+│                         └─────────────────────────────────────┘             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -283,10 +283,10 @@ Event: loan:application:uploaded
 │   Step 3: calculate_matches (PARALLEL)                                      │
 │   ┌─────────────────────────────────────────────────────────────────────┐   │
 │   │                                                                     │   │
-│   │   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐        │   │
-│   │   │ Lender 1 │   │ Lender 2 │   │ Lender 3 │   │ Lender N │        │   │
-│   │   │  Match   │   │  Match   │   │  Match   │   │  Match   │        │   │
-│   │   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘        │   │
+│   │   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐         │   │
+│   │   │ Lender 1 │   │ Lender 2 │   │ Lender 3 │   │ Lender N │         │   │
+│   │   │  Match   │   │  Match   │   │  Match   │   │  Match   │         │   │
+│   │   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘         │   │
 │   │        │              │              │              │               │   │
 │   │        └──────────────┴──────────────┴──────────────┘               │   │
 │   │                              │                                      │   │
@@ -314,20 +314,20 @@ For each lender, the LLM evaluates 10 criteria:
 │                    MATCH SCORING CRITERIA                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│   Criteria              │ Weight  │ Description                │
-│   ──────────────────────┼─────────┼───────────────────────────  │
-│   loan_amount           │  10%    │ Amount within range?       │
-│   loan_type             │  10%    │ Type offered by lender?    │
-│   interest_rate         │  10%    │ Rates align with needs?    │
-│   eligibility           │  10%    │ Meets basic criteria?      │
-│   tenure                │  10%    │ Tenure options match?      │
-│   credit_profile        │  10%    │ Credit score acceptable?   │
-│   income                │  10%    │ Income requirements met?   │
-│   documentation         │  10%    │ Can provide documents?     │
-│   special_conditions    │  10%    │ Any special requirements?  │
-│   overall_fit           │  10%    │ General compatibility      │
-│   ──────────────────────┼─────────┼───────────────────────────  │
-│   TOTAL                 │  100%   │ Final match score          │
+│   Criteria              │ Weight  │ Description                 │
+│   ──────────────────────┼─────────┼─────────────────────────────│
+│   loan_amount           │  10%    │ Amount within range?        │
+│   loan_type             │  10%    │ Type offered by lender?     │
+│   interest_rate         │  10%    │ Rates align with needs?     │
+│   eligibility           │  10%    │ Meets basic criteria?       │
+│   tenure                │  10%    │ Tenure options match?       │
+│   credit_profile        │  10%    │ Credit score acceptable?    │
+│   income                │  10%    │ Income requirements met?    │
+│   documentation         │  10%    │ Can provide documents?      │
+│   special_conditions    │  10%    │ Any special requirements?   │
+│   overall_fit           │  10%    │ General compatibility       │
+│   ──────────────────────┼─────────┼─────────────────────────────│
+│   TOTAL                 │  100%   │ Final match score           │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -397,11 +397,11 @@ For each lender, the LLM evaluates 10 criteria:
 │  Input: PDF bytes                                               │
 │                                                                 │
 │  Processing Pipeline:                                           │
-│  ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────────┐     │
-│  │ PyMuPDF │──▶│ Render  │──▶│  PIL    │──▶│  Tesseract  │     │
-│  │  Open   │   │ @ 300   │   │  Image  │   │    OCR      │     │
-│  │   PDF   │   │   DPI   │   │         │   │             │     │
-│  └─────────┘   └─────────┘   └─────────┘   └─────────────┘     │
+│  ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────────┐      │
+│  │ PyMuPDF │──▶│ Render  │──▶│  PIL    │──▶│  Tesseract  │      │
+│  │  Open   │   │ @ 300   │   │  Image  │   │    OCR      │      │
+│  │   PDF   │   │   DPI   │   │         │   │             │      │
+│  └─────────┘   └─────────┘   └─────────┘   └─────────────┘      │
 │                                                   │             │
 │  Output: Concatenated text from all pages         │             │
 │  ◄────────────────────────────────────────────────┘             │
@@ -429,20 +429,20 @@ For each lender, the LLM evaluates 10 criteria:
 │                                                                 │
 │  Methods:                                                       │
 │                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  process_raw_text(raw_text, lender_name)                │   │
-│  │  └── Extract lender policy information                  │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  process_raw_text(raw_text, lender_name)                │    │
+│  │  └── Extract lender policy information                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  process_loan_application(raw_text, applicant_name)     │   │
-│  │  └── Extract loan application information               │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  process_loan_application(raw_text, applicant_name)     │    │
+│  │  └── Extract loan application information               │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  validate_and_enrich_data(processed_data, raw_text)     │   │
-│  │  └── Add completeness scores and validation flags       │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  validate_and_enrich_data(processed_data, raw_text)     │    │
+│  │  └── Add completeness scores and validation flags       │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -460,12 +460,12 @@ For each lender, the LLM evaluates 10 criteria:
 │  • lender_name                                                  │
 │                                                                 │
 │  Process:                                                       │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  1. Build comparison prompt with both datasets          │   │
-│  │  2. Send to OpenAI with JSON response format            │   │
-│  │  3. Parse match analysis response                       │   │
-│  │  4. Return score (0-100) and detailed breakdown         │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  1. Build comparison prompt with both datasets          │    │
+│  │  2. Send to OpenAI with JSON response format            │    │
+│  │  3. Parse match analysis response                       │    │
+│  │  4. Return score (0-100) and detailed breakdown         │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  Output:                                                        │
 │  • match_score: float (0-100)                                   │
@@ -542,12 +542,12 @@ Sync (Alembic):           postgresql+psycopg://user:pass@host:5432/kaaj
 │                     REACT FRONTEND                              │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐       │
-│  │    Pages    │────▶│   Hooks     │────▶│     API     │       │
-│  │             │     │ (TanStack   │     │   Service   │       │
-│  │ - Lenders   │     │   Query)    │     │             │       │
-│  │ - LoanApps  │     │             │     │ - lenderApi │       │
-│  └─────────────┘     └─────────────┘     │ - loanApi   │       │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐        │
+│  │    Pages    │────▶│   Hooks     │────▶│     API     │        │
+│  │             │     │ (TanStack   │     │   Service   │        │
+│  │ - Lenders   │     │   Query)    │     │             │        │
+│  │ - LoanApps  │     │             │     │ - lenderApi │        │
+│  └─────────────┘     └─────────────┘     │ - loanApi   │        │
 │        │                                  └──────┬──────┘       │
 │        ▼                                         │              │
 │  ┌─────────────┐                                 │              │
