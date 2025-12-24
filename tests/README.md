@@ -2,6 +2,16 @@
 
 This directory contains comprehensive API tests for the Kaaj lender management system.
 
+## Overview
+
+The test suite is designed to work **without external dependencies** like Redis or OpenAI:
+- ✅ **Celery/Redis**: Automatically mocked (no Redis required)
+- ✅ **OpenAI LLM**: Mocked with predefined responses
+- ✅ **OCR Service**: Mocked to return sample text
+- ✅ **Database**: Uses separate test database
+
+This makes tests fast, reliable, and easy to run locally or in CI/CD.
+
 ## Setup
 
 ### 1. Install Test Dependencies
@@ -164,6 +174,52 @@ tests/test_lender_upload.py::TestLenderUpload::test_upload_invalid_file_type PAS
 ==================== 15 passed in 12.34s ====================
 ```
 
+## Mocking Strategy
+
+### Celery/Redis Mocking
+
+**No Redis required!** Celery tasks are automatically mocked in all tests:
+
+- **Session-level mock**: Prevents Redis connection attempts at import time
+- **Function-level mock**: Returns mock AsyncResult for `.delay()` and `.apply_async()` calls
+- **Environment variables**: Set to use in-memory backends
+
+See [CELERY_MOCKING.md](./CELERY_MOCKING.md) for detailed information.
+
+**Key Points:**
+- Tests run without Redis or Celery workers
+- Tasks appear to be queued but don't actually execute
+- You can verify task calls using `mock_celery` fixture
+- Task logic can be tested directly by calling the async function
+
+**Example:**
+
+```python
+async def test_upload_triggers_task(client, mock_celery, sample_pdf_file):
+    with open(sample_pdf_file, "rb") as f:
+        response = await client.post(
+            "/api/lenders/upload",
+            files={"file": ("test.pdf", f, "application/pdf")},
+            data={"lender_name": "Test"}
+        )
+    
+    # Verify task was called (mocked)
+    mock_celery['delay'].assert_called_once()
+```
+
+### LLM/OpenAI Mocking
+
+OpenAI API calls are mocked with predefined responses:
+- Returns structured lender data
+- No API keys required
+- Fast and deterministic
+
+### OCR Mocking
+
+Tesseract OCR is mocked to return sample text:
+- No Tesseract installation required
+- Returns predictable test data
+
 ## Troubleshooting
 
 ### No PDF files found
@@ -191,7 +247,7 @@ sqlalchemy.exc.OperationalError: could not connect to server
 TesseractNotFoundError: tesseract is not installed
 ```
 
-**Solution:** Install Tesseract OCR:
+**Solution:** Tests mock OCR by default. This error shouldn't occur unless testing OCR directly. If needed, install Tesseract:
 
 ```bash
 # macOS
@@ -203,6 +259,20 @@ sudo apt-get install tesseract-ocr
 # Fedora
 sudo dnf install tesseract
 ```
+
+### Redis/Celery connection errors
+
+```
+Retry limit exceeded while trying to reconnect to the Celery redis result store backend
+```
+
+**Solution:** 
+1. Celery is automatically mocked in tests - this error shouldn't occur
+2. Make sure you're running tests with pytest (not starting the app)
+3. Check that `conftest.py` is being loaded properly
+4. Verify you're not importing Celery before mocks are set up
+
+The mocks are configured in `tests/conftest.py`. See [CELERY_MOCKING.md](./CELERY_MOCKING.md) for details.
 
 ### Import errors
 

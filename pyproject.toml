@@ -27,6 +27,7 @@ dependencies = [
     "celery>=5.4.0",
     "redis>=5.0.0",
     "greenlet>=3.2.4",
+    "hatchet-sdk>=0.30.0",
 ]
 
 [dependency-groups]

@@ -7,6 +7,7 @@ class Base(DeclarativeBase):
 
 # Now import models that depend on Base
 from app.models.lender import Lender, LenderStatus
+from app.models.loan_application import LoanApplication, LoanMatch, ApplicationStatus, MatchStatus
 
-__all__ = ["Base", "Lender", "LenderStatus"]
+__all__ = ["Base", "Lender", "LenderStatus", "LoanApplication", "LoanMatch", "ApplicationStatus", "MatchStatus"]
 

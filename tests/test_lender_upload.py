@@ -2,6 +2,15 @@
 Test Cases for Lender Upload API
 
 This module contains comprehensive tests for PDF upload, processing, and data validation.
+
+IMPORTANT: These tests use mocked services to avoid external dependencies:
+1. OCR Service is mocked to return sample text from the "ADVANTAGE BROKER 2025" PDF
+2. LLM Service is mocked to return a predefined structured response
+   - This allows deterministic testing without calling OpenAI API
+   - The mock response structure matches real LLM output format
+3. All assertions are based on the mocked responses defined in conftest.py
+
+The expected_llm_response fixture provides the exact structure returned by the mock.
 """
 import json
 import os
@@ -172,11 +181,12 @@ class TestLenderUpload:
         result = await _process_lender_document_async(lender_id)
         
         # Refresh session to get updated data
-        await db_session.expire_all()
+        db_session.expire_all()
         
         # Verify processing result
         assert result["success"] is True
         assert result["lender_id"] == lender_id
+        assert result["status"] == "completed"
         
         # Verify database state after processing
         db_result = await db_session.execute(
@@ -184,13 +194,40 @@ class TestLenderUpload:
         )
         lender = db_result.scalar_one()
         
-        # The status might be COMPLETED or FAILED depending on LLM processing
-        assert lender.status in [LenderStatus.COMPLETED, LenderStatus.FAILED]
+        # Verify status is COMPLETED with mocked LLM
+        assert lender.status == LenderStatus.COMPLETED
         
-        # If completed, processed_data should be populated
-        if lender.status == LenderStatus.COMPLETED:
-            assert lender.processed_data is not None
-            assert isinstance(lender.processed_data, dict)
+        # Verify processed_data structure from mocked LLM response
+        assert lender.processed_data is not None
+        assert isinstance(lender.processed_data, dict)
+        
+        # Assert specific fields from mocked LLM response
+        assert "loan_types" in lender.processed_data
+        assert lender.processed_data["loan_types"] == ["Fixed Rate", "Variable Rate", "Interest Only"]
+        
+        assert "interest_rates" in lender.processed_data
+        assert lender.processed_data["interest_rates"]["fixed_rate"]["min"] == "3.5%"
+        assert lender.processed_data["interest_rates"]["fixed_rate"]["max"] == "4.5%"
+        assert lender.processed_data["interest_rates"]["variable_rate"]["min"] == "2.5%"
+        assert lender.processed_data["interest_rates"]["variable_rate"]["max"] == "3.5%"
+        
+        assert "loan_amount_range" in lender.processed_data
+        assert lender.processed_data["loan_amount_range"]["min"] == "$50,000"
+        assert lender.processed_data["loan_amount_range"]["max"] == "$5,000,000"
+        
+        assert "contact_information" in lender.processed_data
+        assert lender.processed_data["contact_information"]["email"] == "info@samplelender.com"
+        assert lender.processed_data["contact_information"]["phone"] == "1800 123 456"
+        
+        # Verify metadata from mocked LLM
+        assert "_metadata" in lender.processed_data
+        assert lender.processed_data["_metadata"]["processing_successful"] is True
+        assert lender.processed_data["_metadata"]["model"] == "gpt-4o-mini"
+        
+        # Verify validation data added by validate_and_enrich_data
+        assert "_validation" in lender.processed_data
+        assert lender.processed_data["_validation"]["completeness_score"] == 1.0
+        assert lender.processed_data["_validation"]["field_completeness"]["loan_types"] is True
     
     @pytest.mark.asyncio
     async def test_upload_invalid_file_type(
@@ -358,6 +395,92 @@ class TestProcessingWorkflow:
     """Test suite for the complete upload and processing workflow."""
     
     @pytest.mark.asyncio
+    async def test_llm_response_structure(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        sample_pdf_file: str,
+        expected_llm_response: dict
+    ):
+        """Test that LLM processing returns the expected mocked structure."""
+        # Upload PDF
+        with open(sample_pdf_file, "rb") as f:
+            files = {"file": (os.path.basename(sample_pdf_file), f, "application/pdf")}
+            data = {
+                "lender_name": "LLM Response Test",
+                "created_by": "test_user"
+            }
+            
+            response = await client.post(
+                "/api/lenders/upload",
+                files=files,
+                data=data
+            )
+        
+        assert response.status_code == 201
+        lender_id = response.json()["lender_id"]
+        
+        # Process the document
+        processing_result = await _process_lender_document_async(lender_id)
+        
+        # Refresh session
+        db_session.expire_all()
+        
+        # Verify processing was successful
+        assert processing_result["success"] is True
+        
+        # Get the processed lender
+        result = await db_session.execute(
+            select(Lender).where(Lender.id == lender_id)
+        )
+        lender = result.scalar_one()
+        
+        # Verify status
+        assert lender.status == LenderStatus.COMPLETED
+        
+        # Comprehensive validation of processed_data against expected mock
+        processed_data = lender.processed_data
+        
+        # Compare all top-level keys (excluding _validation which is added by enrichment)
+        for key in expected_llm_response.keys():
+            assert key in processed_data, f"Missing key: {key}"
+            assert processed_data[key] == expected_llm_response[key], \
+                f"Mismatch in {key}: expected {expected_llm_response[key]}, got {processed_data[key]}"
+        
+        # Verify the enrichment added validation data
+        assert "_validation" in processed_data
+        assert "field_completeness" in processed_data["_validation"]
+        assert "completeness_score" in processed_data["_validation"]
+        
+        # Validate specific nested structures
+        assert processed_data["interest_rates"]["fixed_rate"]["min"] == "3.5%"
+        assert processed_data["interest_rates"]["variable_rate"]["max"] == "3.5%"
+        assert processed_data["loan_amount_range"]["min"] == "$50,000"
+        assert processed_data["loan_amount_range"]["max"] == "$5,000,000"
+        assert processed_data["tenure"]["min"] == "1 year"
+        assert processed_data["tenure"]["max"] == "30 years"
+        
+        # Validate arrays
+        assert len(processed_data["loan_types"]) == 3
+        assert len(processed_data["eligibility_criteria"]) == 3
+        assert len(processed_data["documents_required"]) == 4
+        assert len(processed_data["key_terms"]) == 3
+        assert len(processed_data["special_offers"]) == 2
+        
+        # Validate contact information
+        contact = processed_data["contact_information"]
+        assert contact["email"] == "info@samplelender.com"
+        assert contact["phone"] == "1800 123 456"
+        assert contact["website"] == "www.advantagebroker.com"
+        
+        # Validate metadata
+        metadata = processed_data["_metadata"]
+        assert metadata["model"] == "gpt-4o-mini"
+        assert metadata["temperature"] == 0.2
+        assert metadata["tokens_used"] == 850
+        assert metadata["processing_successful"] is True
+    
+    @pytest.mark.asyncio
     async def test_complete_workflow_with_assertions(
         self,
         client: AsyncClient,
@@ -396,18 +519,35 @@ class TestProcessingWorkflow:
         processing_result = await _process_lender_document_async(lender_id)
         
         # Refresh the session
-        await db_session.expire_all()
+        db_session.expire_all()
         
         # Step 4: Verify processing result
         assert "success" in processing_result
+        assert processing_result["success"] is True
         assert processing_result["lender_id"] == lender_id
+        assert processing_result["status"] == "completed"
+        
+        # Verify processed_data in the result
+        assert "processed_data" in processing_result
+        processed = processing_result["processed_data"]
+        
+        # Assert key fields from mocked LLM response
+        assert processed["loan_types"] == ["Fixed Rate", "Variable Rate", "Interest Only"]
+        assert processed["eligibility_criteria"] == [
+            "Minimum credit score: 650",
+            "Stable employment history",
+            "Valid identification"
+        ]
+        assert len(processed["documents_required"]) == 4
+        assert "Proof of identity" in processed["documents_required"]
         
         # Step 5: Verify final state via API
         get_response = await client.get(f"/api/lenders/{lender_id}")
         assert get_response.status_code == 200
         
         final_data = get_response.json()
-        assert final_data["status"] in ["completed", "failed"]
+        assert final_data["status"] == "completed"
+        assert "processed_data" in final_data
         
         # Step 6: Verify final state in database
         result = await db_session.execute(
@@ -415,14 +555,33 @@ class TestProcessingWorkflow:
         )
         lender_after = result.scalar_one()
         
-        assert lender_after.status in [LenderStatus.COMPLETED, LenderStatus.FAILED]
+        assert lender_after.status == LenderStatus.COMPLETED
         assert lender_after.raw_data is not None
+        assert lender_after.processed_data is not None
         
-        # If completed successfully, verify processed data structure
-        if lender_after.status == LenderStatus.COMPLETED:
-            assert lender_after.processed_data is not None
-            assert isinstance(lender_after.processed_data, dict)
-            # Add more specific assertions based on your LLM output structure
+        # Detailed assertions on processed data structure
+        processed_data = lender_after.processed_data
+        assert isinstance(processed_data, dict)
+        
+        # Verify all expected fields are present
+        expected_fields = [
+            "loan_types", "interest_rates", "eligibility_criteria",
+            "loan_amount_range", "tenure", "processing_fees",
+            "documents_required", "key_terms", "contact_information",
+            "special_offers", "_metadata", "_validation"
+        ]
+        for field in expected_fields:
+            assert field in processed_data, f"Missing field: {field}"
+        
+        # Verify specific data values from mock
+        assert processed_data["key_terms"] == [
+            "LVR up to 95%",
+            "Interest only option available",
+            "Fixed and variable rate options"
+        ]
+        assert processed_data["processing_fees"] == "Application fee applies"
+        assert processed_data["tenure"]["min"] == "1 year"
+        assert processed_data["tenure"]["max"] == "30 years"
     
     @pytest.mark.asyncio
     async def test_process_all_uploaded_pdfs(
@@ -459,9 +618,15 @@ class TestProcessingWorkflow:
             processing_results.append(result)
         
         # Refresh session
-        await db_session.expire_all()
+        db_session.expire_all()
         
-        # Verify all have been processed
+        # Verify all processing results
+        for result in processing_results:
+            assert result["success"] is True
+            assert "lender_id" in result
+            assert result["status"] == "completed"
+        
+        # Verify all have been processed in database
         result = await db_session.execute(
             select(Lender).where(Lender.id.in_(lender_ids))
         )
@@ -469,14 +634,27 @@ class TestProcessingWorkflow:
         
         assert len(processed_lenders) == len(all_pdf_files)
         
-        # All should have moved beyond UPLOADED status
+        # All should have COMPLETED status with mocked LLM
         for lender in processed_lenders:
-            assert lender.status in [
-                LenderStatus.COMPLETED,
-                LenderStatus.FAILED,
-                LenderStatus.PROCESSING
-            ]
+            assert lender.status == LenderStatus.COMPLETED
             assert lender.raw_data is not None
+            assert lender.processed_data is not None
+            
+            # Verify each has the mocked LLM response structure
+            assert "loan_types" in lender.processed_data
+            assert len(lender.processed_data["loan_types"]) == 3
+            assert "Fixed Rate" in lender.processed_data["loan_types"]
+            
+            assert "contact_information" in lender.processed_data
+            assert lender.processed_data["contact_information"]["email"] == "info@samplelender.com"
+            
+            # Verify metadata
+            assert "_metadata" in lender.processed_data
+            assert lender.processed_data["_metadata"]["processing_successful"] is True
+            
+            # Verify validation
+            assert "_validation" in lender.processed_data
+            assert lender.processed_data["_validation"]["completeness_score"] == 1.0
 
 
 class TestDataValidation:

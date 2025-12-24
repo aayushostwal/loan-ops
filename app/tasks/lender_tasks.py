@@ -6,14 +6,12 @@ Async Celery tasks for processing lender documents.
 import logging
 from typing import Any, Dict
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
 import asyncio
 
 from app.celery_app import celery_app
 from app.models.lender import Lender, LenderStatus
 from app.services.llm_service import LLMService
-from app.db import DATABASE_URL
+from app.db import TaskAsyncSession
 
 # Configure logging
 logging.basicConfig(
@@ -21,14 +19,6 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Create async engine for task processing
-task_engine = create_async_engine(DATABASE_URL, echo=False)
-TaskAsyncSession = sessionmaker(
-    task_engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
 
 
 async def _process_lender_document_async(lender_id: int) -> Dict[str, Any]:
